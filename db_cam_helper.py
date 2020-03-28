@@ -4,6 +4,7 @@
 
 import os
 import sys
+import psycopg2
 import sqlalchemy as db
 from datetime import datetime
 from urllib.parse import quote
@@ -127,8 +128,6 @@ def label_writer(engine, label_dict, label_template):
             label_template["created_date"] = str(datetime.now())
             insert_query = f"INSERT INTO {table_name} ({','.join(label_template.keys())}) VALUES {tuple(label_template.values())}"
             link_to_db.execute(insert_query)
-
-
 
 def frame_writer(engine, frame_dict):
     table_name = '"CV_Analytics".frame'
@@ -274,27 +273,36 @@ def table_generic_writer(engine, table_name, data_dict):
         link_to_db.execute(insert_query)
 
 
-def ou_inference_loader(engine):
+def ou_inference_loader(engine, inference_engine_id=None):
     seq, operating_unit_id, inference_engine_id, label_id = None, None, None, None
     table_name = '"CV_Analytics".ou_inference_engine_label'
     if engine == None:
         return None
     with engine.connect() as link_to_db:
         query = f"SELECT * FROM {table_name} WHERE current_flag=1 and active_flag=1"
+        if inference_engine_id != None:
+            query += f" and inference_engine_id={inference_engine_id}"
         result = link_to_db.execute(query)
         if result.rowcount == 0:
             print("No configurations found ! exiting !")
             exit()
         else:
-            data_list = (result.fetchone()).values()
-            seq = data_list[0]
-            operating_unit_id = data_list[1]
-            inference_engine_id = data_list[2]
-            label_id = data_list[3]
+            data_list = list(map(lambda x: x.values(), result.fetchall()))
+            seq = [record[0] for record in data_list]
+            operating_unit_id = [record[1] for record in data_list]
+            inference_engine_id = [record[2] for record in data_list]
+            label_id = [record[3] for record in data_list]
+            temp = {}
+            for ieid in inference_engine_id: temp.update({ieid:{}})
+            for _inference_engine_id, _label_id, _operating_unit_id in zip(inference_engine_id, label_id, operating_unit_id):
+                if _operating_unit_id not in temp[_inference_engine_id].keys():
+                    temp[_inference_engine_id][_operating_unit_id] = [_label_id]
+                else:
+                    temp[_inference_engine_id][_operating_unit_id].append(_label_id)
             print(
-                f"Configuration loaded with the following parameters\n seq= {seq}\n operating_unit_id = {operating_unit_id}\n inference_engine_id = {inference_engine_id}\n label_id\t = {label_id}\n"
+                f"Configuration loaded with the following parameters\n seqenece numbers = {' | '.join(map(str, seq))}\n operating_unit_ids = {' | '.join(map(str, operating_unit_id))}\n inference_engine_ids = {' | '.join(map(str, inference_engine_id))}\n label_ids\t = {' | '.join(map(str, label_id))}\n"
             )
-    return (seq, operating_unit_id, inference_engine_id, label_id)
+    return (seq, operating_unit_id, inference_engine_id, label_id, temp)
 
 
 def generate_db_engine(creds):
@@ -305,6 +313,73 @@ def generate_db_engine(creds):
     )
     return engine
 
+def logging(engine, image, timestamp, label_id, inference_engine_id, operating_unit_id, \
+        event_flag=0, index="", current_flag=1, active_flag=1, delete_flag=0, object_xmin=0, object_ymin=0, \
+        object_xmax=0, object_ymax=0, label_object_pred_threshold=0, label_object_pred_confidence=0 ):
+    
+    frame_dict, object_dtl_dict = {}, {}
+    time = timestamp.strftime('%m/%d/%Y %I:%M:%S %p')
+    time2 = timestamp.strftime('%d%m%Y%_I%M%S%p')
+    file_name = f'{operating_unit_id}_{inference_engine_id}_{label_id}_{time2}_{index}'
+    cv2.imwrite(file_name+".jpg", image)
+    shape =""
+    for i in image.shape:
+        shape += str(i) + " " 
+    frame_dict['frame_name'] = file_name
+    frame_dict['frame_stored_location'] = os.path.abspath(file_name+".jpg")
+    frame_dict['frame_stored_encoding'] = "JPG"
+    frame_dict['frame_local_timestamp'] = f"\"{time}\""
+    frame_dict['frame_local_time_zone'] = 'IST'
+    frame_dict['frame_size'] = shape
+    frame_dict['created_by'] = inference_engine_id
+    frame_dict['created_date'] =  f"\"{time}\""
+    frame_dict['active_flag'] = active_flag
+    frame_dict['current_flag'] = current_flag
+    frame_dict['delete_flag'] = delete_flag
+    frame_id = frame_writer(engine, frame_dict)
+    
+    if frame_id == None:
+        return None
+    
+    if event_flag:
+        object_dtl_dict['frame_id'] = frame_id
+        object_dtl_dict['object_loc_id'] = operating_unit_id
+        object_dtl_dict['label_id'] = label_id
+        object_dtl_dict['created_by'] = inference_engine_id
+        object_dtl_dict['created_date'] =  f"\"{time}\""
+        object_dtl_dict['active_flag'] = active_flag
+        object_dtl_dict['current_flag'] = current_flag
+        object_dtl_dict['delete_flag'] = delete_flag
+        object_dtl_dict['object_xmin'] = object_xmin
+        object_dtl_dict['object_ymin'] = object_ymin
+        object_dtl_dict['object_xmax'] = object_xmax
+        object_dtl_dict['object_ymax'] = object_ymax
+        object_dtl_dict['label_object_pred_threshold'] = label_object_pred_threshold
+        object_dtl_dict['label_object_pred_confidence'] = label_object_pred_confidence
+        object_dtl_id = object_dtl_writer(engine, object_dtl_dict)
+
+    if object_dtl_id == None:
+        return None
+    
+    data_dict = {}
+    data_dict["video_id"] = -1
+    data_dict["video_dtl_seq"] = -1
+    data_dict["inference_engine_id"] = inference_engine_id
+    data_dict["operating_unit_id"] = operating_unit_id
+    data_dict["operating_unit_seq"] = operating_unit_id
+    data_dict["frame_id"] = frame_id
+    data_dict["label_id"] = label_id
+    data_dict["label_seq"] = label_id
+    data_dict["event_processed_time_zone"] = "IST"
+    data_dict["event_processed_local_time"] =f"\"{time}\""
+    data_dict["event_flag"] = event_flag
+    data_dict["created_date"] = f"\"{time}\""
+    data_dict["created_by"] = inference_engine_id
+    data_dict["current_flag"] = current_flag
+    data_dict["active_flag"] = active_flag
+    data_dict["delete_flag"] = delete_flag
+    
+    event_log_dtl_writer(engine, data_dict)
 
 model_id, current_flag, active_flag, delete_flag = 11, 1, 1, 0
 model_config_name = "config.json"
