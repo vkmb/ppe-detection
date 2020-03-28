@@ -87,42 +87,49 @@ def is_wearing_vest(person_box, vest_box, vest_intersection_ratio):
 def check_vest(vest_boxes, person_box):
     vest_flag = False
     vest_intersection_ratio = 0.6
+    index = None
 
-    for vest_box in vest_boxes:
-        vest_flag = is_wearing_hardhat(person_box, vest_box, vest_intersection_ratio)
+    for indx in range(len(vest_boxes)):
+        index = indx
+        vest_flag = is_wearing_hardhat(person_box, vest_boxes[indx], vest_intersection_ratio)
         if vest_flag:
             break
 
-    return vest_boxes.index(vest_box), vest_flag
+    return index, vest_flag
 
 def check_hardhat(hardhat_boxes, person_box):
     hardhat_flag = False
     hardhat_intersection_ratio = 0.6
+    index = None
 
-    for hardhat_box in hardhat_boxes:
-        hardhat_flag = is_wearing_hardhat(person_box, hardhat_box, hardhat_intersection_ratio)
+    for indx in range(len(hardhat_boxes)):
+        index = indx
+        hardhat_flag = is_wearing_hardhat(person_box, hardhat_boxes[indx], hardhat_intersection_ratio)
         if hardhat_flag:
             break
 
-    return hardhat_boxes.index(hardhat_box), hardhat_flag
+    return index, hardhat_flag
 
 def is_wearing_hardhat_vest(hardhat_boxes, vest_boxes, person_box):
     hardhat_flag = False
     vest_flag = False
     hardhat_intersection_ratio = 0.6
     vest_intersection_ratio = 0.6
-
-    for hardhat_box in hardhat_boxes:
-        hardhat_flag = is_wearing_hardhat(person_box, hardhat_box, hardhat_intersection_ratio)
+    hardhat_id = None
+    vest_id = None
+    for hardhatid in range(len(hardhat_boxes)):
+        hardhat_id = hardhatid
+        hardhat_flag = is_wearing_hardhat(person_box, hardhat_boxes[hardhatid], hardhat_intersection_ratio)
         if hardhat_flag:
             break
 
-    for vest_box in vest_boxes:
-        vest_flag = is_wearing_vest(person_box, vest_box, vest_intersection_ratio)
+    for vestid in range(len(vest_boxes)):
+        vest_id = vestid
+        vest_flag = is_wearing_vest(person_box, vest_boxes[vestid], vest_intersection_ratio)
         if vest_flag:
             break
 
-    return  hardhat_boxes.index(hardhat_box),  hardhat_flag, vest_boxes.index(vest_box), vest_flag
+    return  hardhat_id,  hardhat_flag, vest_id, vest_flag
 
 
 # def post_message(camera_id, output_dict, image, min_score_thresh):
@@ -174,22 +181,26 @@ def is_wearing_hardhat_vest(hardhat_boxes, vest_boxes, person_box):
 
 
 
-def logging(image, timestamp, label_id, inference_engine_id, operating_unit_id, \
+def logging(engine, image, timestamp, label_id, inference_engine_id, operating_unit_id, \
         event_flag=0, index="", current_flag=1, active_flag=1, delete_flag=0, object_xmin=0, object_ymin=0, \
         object_xmax=0, object_ymax=0, label_object_pred_threshold=0, label_object_pred_confidence=0 ):
     
     frame_dict, object_dtl_dict = {}, {}
-    time = timestamp.strftime("%d/%M/%Y %I:%M:%S %p")
-    file_name = f'{operating_unit_id} {inference_engine_id} {label_id} {time} {index}'
+    time = timestamp.strftime('%m/%d/%Y %I:%M:%S %p')
+    time2 = timestamp.strftime('%d%m%Y%_I%M%S%p')
+    file_name = f'{operating_unit_id}_{inference_engine_id}_{label_id}_{time2}_{index}'
     cv2.imwrite(file_name+".jpg", image)
+    shape =""
+    for i in image.shape:
+        shape += str(i) + " " 
     frame_dict['frame_name'] = file_name
     frame_dict['frame_stored_location'] = os.path.abspath(file_name+".jpg")
     frame_dict['frame_stored_encoding'] = "JPG"
-    frame_dict['frame_local_timestamp'] = f"\'{time}\'"
+    frame_dict['frame_local_timestamp'] = f"\"{time}\""
     frame_dict['frame_local_time_zone'] = 'IST'
-    frame_dict['frame_size'] = ", ".join(image.shape)
+    frame_dict['frame_size'] = shape
     frame_dict['created_by'] = inference_engine_id
-    frame_dict['created_date'] =  f"\'{time}\'"
+    frame_dict['created_date'] =  f"\"{time}\""
     frame_dict['active_flag'] = active_flag
     frame_dict['current_flag'] = current_flag
     frame_dict['delete_flag'] = delete_flag
@@ -203,7 +214,7 @@ def logging(image, timestamp, label_id, inference_engine_id, operating_unit_id, 
         object_dtl_dict['object_loc_id'] = operating_unit_id
         object_dtl_dict['label_id'] = label_id
         object_dtl_dict['created_by'] = inference_engine_id
-        object_dtl_dict['created_date'] =  f"\'{time}\'"
+        object_dtl_dict['created_date'] =  f"\"{time}\""
         object_dtl_dict['active_flag'] = active_flag
         object_dtl_dict['current_flag'] = current_flag
         object_dtl_dict['delete_flag'] = delete_flag
@@ -228,9 +239,9 @@ def logging(image, timestamp, label_id, inference_engine_id, operating_unit_id, 
     data_dict["label_id"] = label_id
     data_dict["label_seq"] = label_id
     data_dict["event_processed_time_zone"] = "IST"
-    data_dict["event_processed_local_time"] = f"\'{time}\'"
+    data_dict["event_processed_local_time"] =f"\"{time}\""
     data_dict["event_flag"] = event_flag
-    data_dict["created_date"] = f"\'{time}\'"
+    data_dict["created_date"] = f"\"{time}\""
     data_dict["created_by"] = inference_engine_id
     data_dict["current_flag"] = current_flag
     data_dict["active_flag"] = active_flag
@@ -275,7 +286,8 @@ def image_processing(graph, category_index, image_file_name, show_video_window):
 
 
 def predict(graph, category_index, video_file_name):
-    
+    if len(video_file_name) == 1:
+        video_file_name = int(video_file_name)
     cap = cv2.VideoCapture(video_file_name)
     min_score_thresh = .5
     engine = generate_db_engine(creds)
@@ -283,11 +295,14 @@ def predict(graph, category_index, video_file_name):
     seq, operating_unit_id, inference_engine_id, label_id = ou_inference_loader(engine)
     # load label meta data
     label_dict = label_loader(engine, label_id)
+    
     # model metadata 
     # inference_engine_dict = inference_engine_loader(engine, inference_engine_id)
     # load operating unit metadata
     # operating_unit_dict = operating_unit_loader(engine, operating_unit_id)
     label_to_predict = label_dict["label_name"]
+    print("MODEL WILL BE DETECTIING", label_to_predict, "VIOLATIONS")
+
     with graph.as_default():
         print("predict:", "default tensorflow graph")
         ops = tf.get_default_graph().get_operations()
@@ -331,11 +346,11 @@ def predict(graph, category_index, video_file_name):
                         violation_tracker["violation"] = True
                         violation_tracker["start_time"] =  current_time
                         violation_tracker["end_time"] = current_time
-                        for box in boxes:
+                        for box_id in range(len(boxes)):
                             #log
-                            logging(frame, str(violation_tracker["start_time"]), label_id, \
-                            inference_engine_id, operating_unit_id, event_flag=1, index=boxes.index(box),\
-                            object_xmin=box[0], object_ymin=box[1], object_xmax=box[2], object_ymax=box[3], label_object_pred_threshold=min_score_thresh)
+                            logging(engine, frame, violation_tracker["start_time"], label_id, \
+                            inference_engine_id, operating_unit_id, event_flag=1, index=box_id,\
+                            object_xmin=boxes[box_id][0], object_ymin=boxes[box_id][1], object_xmax=boxes[box_id][2], object_ymax=boxes[box_id][3], label_object_pred_threshold=min_score_thresh)
                             
                     elif violation_tracker["violation"] and len(boxes) == 0 and violation_tracker["end_time"] == None:
                         violation_tracker["end_time"] = current_time
@@ -344,7 +359,7 @@ def predict(graph, category_index, video_file_name):
                     elif len(boxes) == 0 and not violation_tracker["violation"] and current_time - violation_tracker["end_time"] > timedelta(seconds=10):
                         violation_tracker["start_time"] =  None
                         violation_tracker["end_time"] = None
-                        logging(frame, str(violation_tracker["start_time"]), label_id, \
+                        logging(engine, frame, violation_tracker["start_time"], label_id, \
                                 inference_engine_id, operating_unit_id, label_object_pred_threshold=min_score_thresh)
 
                 elif label_to_predict == "Saftey Vest":
@@ -353,9 +368,9 @@ def predict(graph, category_index, video_file_name):
 
                     if len(person_boxes) > 0:
                         box_mapper = []
-                        for person_box in person_boxes:
-                            box_id, flag = check_vest(vest_boxes, person_box)
-                            person_box_index = person_boxes.index(person_box)
+                        for person_box_id in range(len(person_boxes)):
+                            box_id, flag = check_hardhat(vest_boxes, person_boxes[person_box_id])
+                            person_box_index = person_boxes[person_box_id]
                             box_mapper.append({'box_index': box_id, 'person_box_index':person_box_index})
                             persons.append(flag)
                     
@@ -364,11 +379,12 @@ def predict(graph, category_index, video_file_name):
                             violation_tracker["start_time"] =  current_time
                             violation_tracker["end_time"] = current_time
                             
-                            for _box in box_mapper:
-                                box = person_boxes[_box['person_box_index']]
-                                logging(frame, str(violation_tracker["start_time"]), label_id, \
-                                inference_engine_id, operating_unit_id, event_flag=1, index=boxes.index(box),\
-                                object_xmin=box[0], object_ymin=box[1], object_xmax=box[2], object_ymax=box[3], label_object_pred_threshold=min_score_thresh)
+                            for box_id in range(len(box_mapper)):
+                                if not persons[box_id]:
+                                    box = person_boxes[box_id]
+                                    logging(engine, frame, violation_tracker["start_time"], label_id, \
+                                    inference_engine_id, operating_unit_id, event_flag=1, index=box_id,\
+                                    object_xmin=box[0], object_ymin=box[1], object_xmax=box[2], object_ymax=box[3], label_object_pred_threshold=min_score_thresh)
                             
                     elif violation_tracker["violation"] and all(persons) and violation_tracker["end_time"] == None:
                         violation_tracker["end_time"] = current_time
@@ -377,7 +393,7 @@ def predict(graph, category_index, video_file_name):
                     elif not violation_tracker["violation"] and current_time - violation_tracker["end_time"] > timedelta(seconds=10):
                         violation_tracker["start_time"] =  None
                         violation_tracker["end_time"] = None
-                        logging(frame, str(violation_tracker["start_time"]), label_id, \
+                        logging(engine, frame, violation_tracker["start_time"], label_id, \
                                 inference_engine_id, operating_unit_id, label_object_pred_threshold=min_score_thresh)
                 
 
@@ -386,9 +402,10 @@ def predict(graph, category_index, video_file_name):
                     hat_boxes = detection_boxes[np.where(detection_classes == 1)]
                     
                     box_mapper = []
-                    for person_box in person_boxes:
-                            box_id, flag = persons.append(check_hardhat(hat_boxes, person_box))
-                            person_box_index = person_boxes.index(person_box)
+                    
+                    for person_box_id in range(len(person_boxes)):
+                            box_id, flag = check_hardhat(hat_boxes, person_boxes[person_box_id])
+                            person_box_index = person_boxes[person_box_id]
                             box_mapper.append({'box_index': box_id, 'person_box_index':person_box_index})
                             persons.append(flag)
                             
@@ -398,21 +415,22 @@ def predict(graph, category_index, video_file_name):
                             violation_tracker["violation"] = True
                             violation_tracker["start_time"] =  current_time
                             violation_tracker["end_time"] = current_time
-
-                            for _box in box_mapper:
-                                box = person_boxes[_box['person_box_index']]
-                                logging(frame, str(violation_tracker["start_time"]), label_id, \
-                                inference_engine_id, operating_unit_id, event_flag=1, index=boxes.index(box),\
-                                object_xmin=box[0], object_ymin=box[1], object_xmax=box[2], object_ymax=box[3], label_object_pred_threshold=min_score_thresh)
+                            print("Viloation detected")
+                            for box_id in range(len(box_mapper)):
+                                if not persons[box_id]:
+                                    box = person_boxes[box_id]
+                                    logging(engine, frame, violation_tracker["start_time"], label_id, \
+                                    inference_engine_id, operating_unit_id, event_flag=1, index=box_id,\
+                                    object_xmin=box[0], object_ymin=box[1], object_xmax=box[2], object_ymax=box[3], label_object_pred_threshold=min_score_thresh)
 
                     elif violation_tracker["violation"] and all(persons) and violation_tracker["end_time"] == None:
                         violation_tracker["end_time"] = current_time
                         violation_tracker["violation"] = False
                     
-                    elif len(boxes) == 0 and not violation_tracker["violation"] and current_time - violation_tracker["end_time"] > timedelta(seconds=intimate_after):
+                    elif len(boxes) == 0 and not violation_tracker["violation"] and current_time - violation_tracker["end_time"] > timedelta(seconds=10):
                         violation_tracker["start_time"] =  None
                         violation_tracker["end_time"] = None
-                        logging(frame, str(violation_tracker["start_time"]), label_id, \
+                        logging(engine, frame, violation_tracker["start_time"], label_id, \
                                 inference_engine_id, operating_unit_id, label_object_pred_threshold=min_score_thresh)
 
                 elif label_to_predict == "All":
@@ -430,20 +448,25 @@ def predict(graph, category_index, video_file_name):
                             violation_tracker["violation"] = True
                             violation_tracker["start_time"] =  current_time
                             violation_tracker["end_time"] = current_time
-                            for _box in box_mapper:
-                                box = person_boxes[_box['person_box_index']]
-                                logging(frame, str(violation_tracker["start_time"]), label_id, \
-                                inference_engine_id, operating_unit_id, event_flag=1, index=boxes.index(box),\
-                                object_xmin=box[0], object_ymin=box[1], object_xmax=box[2], object_ymax=box[3], label_object_pred_threshold=min_score_thresh)
+                            print("violation detected")
+                            for box_id in range(len(box_mapper)):
+                                if not persons[box_id] or not persons2[box_id]:
+                                    box = person_boxes[box_id]
+                                    logging(engine, frame, violation_tracker["start_time"], label_id, \
+                                    inference_engine_id, operating_unit_id, event_flag=1, index=box_id,\
+                                    object_xmin=box[0], object_ymin=box[1], object_xmax=box[2], object_ymax=box[3], label_object_pred_threshold=min_score_thresh)
+                                
+                            
 
-                    elif violation_tracker["violation"] and (not all(persons) or not all(persons2)) and violation_tracker["end_time"] == None:
+                    elif violation_tracker["violation"] and all(persons) and all(persons2) and violation_tracker["end_time"] == None:
                         violation_tracker["end_time"] = current_time
                         violation_tracker["violation"] = False
                     
-                    elif len(boxes) == 0 and not violation_tracker["violation"] and current_time - violation_tracker["end_time"] > timedelta(seconds=intimate_after):
+                    elif len(boxes) == 0 and not violation_tracker["violation"] and current_time - violation_tracker["end_time"] > timedelta(seconds=10):
                         violation_tracker["start_time"] =  None
                         violation_tracker["end_time"] = None
-                        logging(frame, str(violation_tracker["start_time"]), label_id, \
+                        print("violation ended")
+                        logging(engine, frame, violation_tracker["start_time"], label_id, \
                                 inference_engine_id, operating_unit_id, label_object_pred_threshold=min_score_thresh)
                         
 
@@ -453,8 +476,8 @@ def predict(graph, category_index, video_file_name):
 
 def main():
     parser = argparse.ArgumentParser(description="Hardhat and Vest Detection", add_help=True)
-    parser.add_argument("--model_dir", type=str, required=True, const="", help="path to model directory")
-    parser.add_argument("--video_file_name", type=str, required=True, help="path to video file, or camera device, i.e /dev/video1")
+    parser.add_argument("--video_file_name", type=str, required=True, help="path to video file, or camera device, i.e /dev/video1 or just 0, 1, ...")
+    parser.add_argument("--model_dir", type=str, required=True, help="path to model directory")
     args = parser.parse_args()
 
     frozen_model_path = os.path.join(args.model_dir, "frozen_inference_graph.pb")

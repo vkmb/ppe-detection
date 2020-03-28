@@ -1,5 +1,5 @@
 numpy==1.14.5
-tensorflow-gpu>1.2.0
+tensorflow>1.2.0
 opencv-python
 pillow
 requests
