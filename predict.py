@@ -356,7 +356,7 @@ def predict(graph, category_index, video_file_name):
                         violation_tracker["end_time"] = current_time
                         violation_tracker["violation"] = False
                     
-                    elif len(boxes) == 0 and not violation_tracker["violation"] and current_time - violation_tracker["end_time"] > timedelta(seconds=10):
+                    elif len(boxes) == 0 and not violation_tracker["violation"] and violation_tracker["end_time"] != None and current_time - violation_tracker["end_time"] > timedelta(seconds=10):
                         violation_tracker["start_time"] =  None
                         violation_tracker["end_time"] = None
                         logging(engine, frame, violation_tracker["start_time"], label_id, \
@@ -427,7 +427,7 @@ def predict(graph, category_index, video_file_name):
                         violation_tracker["end_time"] = current_time
                         violation_tracker["violation"] = False
                     
-                    elif len(boxes) == 0 and not violation_tracker["violation"] and current_time - violation_tracker["end_time"] > timedelta(seconds=10):
+                    elif len(person_boxes) == 0 and not violation_tracker["violation"] and violation_tracker["end_time"] != None and current_time - violation_tracker["end_time"] > timedelta(seconds=10):
                         violation_tracker["start_time"] =  None
                         violation_tracker["end_time"] = None
                         logging(engine, frame, violation_tracker["start_time"], label_id, \
@@ -462,7 +462,7 @@ def predict(graph, category_index, video_file_name):
                         violation_tracker["end_time"] = current_time
                         violation_tracker["violation"] = False
                     
-                    elif len(boxes) == 0 and not violation_tracker["violation"] and current_time - violation_tracker["end_time"] > timedelta(seconds=10):
+                    elif len(person_boxes) == 0 and not violation_tracker["violation"] and violation_tracker["end_time"] != None and current_time - violation_tracker["end_time"] > timedelta(seconds=10):
                         violation_tracker["start_time"] =  None
                         violation_tracker["end_time"] = None
                         print("violation ended")

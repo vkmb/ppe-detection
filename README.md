@@ -21,7 +21,7 @@ Real time Personal Protection Equipment(PPE) detection running on NVIDIA Jetson 
 $ git clone https://github.com/vkmb/ppe-detection
 $ cd ~/ppe-detection
 $ pip3 install -r requirements.txt
-$ python3 predict.py --video_file_name=xxx
+$ python3 predict.py --video_file_name=path_to_file --model_dir=""
 ```
 * video_file_name: input video file name or usb camera device name, you can get camera device name on ubuntu or NVIDIA Jeston by running
 ```sh
