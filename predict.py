@@ -296,7 +296,7 @@ def predict(graph, labels_list, inference_engine_id=1, streams=None, engine=None
                         if 3 in labels_list[index]:
                           
                             vest_boxes = detection_boxes[np.where(detection_classes == 2)]
-                            print("VD")
+                            print("SVD")
                             if len(person_boxes) > 0:
                                 box_mapper = []
                                 for person_box_id in range(len(person_boxes)):
@@ -333,7 +333,7 @@ def predict(graph, labels_list, inference_engine_id=1, streams=None, engine=None
 
                         if 2 in labels_list[index]:
                             hat_boxes = detection_boxes[np.where(detection_classes == 1)]
-                            print("HH")
+                            print("HHD")
                             box_mapper = []
                             
                             for person_box_id in range(len(person_boxes)):
