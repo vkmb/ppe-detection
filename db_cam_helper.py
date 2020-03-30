@@ -3,6 +3,7 @@
 # pip install --upgrade onvif_zeep sqlalchemy psycopg2-binary
 
 import os
+import cv2
 import sys
 import psycopg2
 import sqlalchemy as db
