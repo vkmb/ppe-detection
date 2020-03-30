@@ -408,7 +408,7 @@ def main():
                       2: {'id': 2, 'name': 'Saftey Vest'},
                       3: {'id': 3, 'name': 'Person'}}
     
-    predict(graph, [1, 2, 3], streams={0:args.video_file_name, 1:args.video_file_name})
+    predict(graph, [[1, 2, 3]], streams={0:args.video_file_name, 1:args.video_file_name})
     
     
 
