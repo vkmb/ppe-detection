@@ -315,13 +315,16 @@ def generate_db_engine(creds):
     return engine
 
 def logging(engine, image, timestamp, label_id, inference_engine_id, operating_unit_id, \
-        event_flag=0, index="", current_flag=1, active_flag=1, delete_flag=0, object_xmin=0, object_ymin=0, \
+        wrtie_on_image=True, event_flag=0, index="", current_flag=1, active_flag=1, delete_flag=0, object_xmin=0, object_ymin=0, \
         object_xmax=0, object_ymax=0, label_object_pred_threshold=0, label_object_pred_confidence=0 ):
     
     frame_dict, object_dtl_dict = {}, {}
     time = timestamp.strftime('%m/%d/%Y %I:%M:%S %p')
     time2 = timestamp.strftime('%d%m%Y%_I%M%S%p')
     file_name = f'{operating_unit_id}_{inference_engine_id}_{label_id}_{time2}_{index}'
+
+    if wrtie_on_image:
+        cv2.rectangle
     cv2.imwrite(file_name+".jpg", image)
     shape =""
     for i in image.shape:

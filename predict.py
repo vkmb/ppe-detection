@@ -163,7 +163,10 @@ def predict(graph, labels_list, inference_engine_id=1, streams=None, engine=None
     
     caps = []
     db_access = False
-    min_score_thresh = .5
+    min_score_thresh = .4
+    category_index = {1: {'id': 1 , 'name': 'Hard Hat'},
+                      2: {'id': 2, 'name': 'Saftey Vest'},
+                      3: {'id': 3, 'name': 'Person'}}
 
     try:
         if engine == None:
@@ -225,10 +228,12 @@ def predict(graph, labels_list, inference_engine_id=1, streams=None, engine=None
                     tensor_name)
         with tf.Session() as sess:
             print("predict:", "tensorflow session")
-            violation_tracker =  [{"violation": False, "start_time": None, "end_time": None} for i in caps]
+            violation_tracker =  [{"PD" : {"violation": False, "start_time": None, "end_time": None}, "SV" : {"violation": False, "start_time": None, "end_time": None}, "HH" : {"violation": False, "start_time": None, "end_time": None}} for i in caps]
             Flags = [True for i in caps]
             index = 0
+            count = 0
             while Flags[index]:
+                count += 1
                 for cap in caps:
                     current_time = datetime.now()
                     ret, frame = cap.read()
@@ -245,111 +250,124 @@ def predict(graph, labels_list, inference_engine_id=1, streams=None, engine=None
 
                     detection_boxes = output_dict["detection_boxes"][detection_scores]
                     detection_classes = output_dict["detection_classes"][detection_scores]
-
+                    
+                    vis_utils.visualize_boxes_and_labels_on_image_array(
+                        frame,
+                        output_dict['detection_boxes'],
+                        output_dict['detection_classes'],
+                        output_dict['detection_scores'],
+                        category_index,
+                        instance_masks=output_dict.get('detection_masks'),
+                        use_normalized_coordinates=True,
+                        line_thickness=4)
+                    # cv2.imwrite(f'ppe{count}.jpg', frame)
+                    # if cv2.waitKey(1) & 0xFF == ord('q'):
+                    #     break
                     persons = []
                     # persons2 = []
                 
-                    if 3 in labels_list[index]:
+                    if 1 in labels_list[index]:
                         # Area violation
-                        
-                        boxes = detection_boxes[np.where(detection_classes == 3)]
-                        if not violation_tracker[index]["violation"] and len(boxes) > 0:
-                            violation_tracker[index]["violation"] = True
-                            violation_tracker[index]["start_time"] =  current_time
-                            violation_tracker[index]["end_time"] = current_time
-                            for box_id in range(len(boxes)):
+                        print("PD")
+                        person_boxes = detection_boxes[np.where(detection_classes == 3)]
+                        if not violation_tracker[index]["PD"]["violation"] and len(person_boxes) > 0:
+                            violation_tracker[index]["PD"]["violation"] = True
+                            violation_tracker[index]["PD"]["start_time"] =  current_time
+                            violation_tracker[index]["PD"]["end_time"] = current_time
+                            print ("*"*100,"\nViolation Detected : Person Entering Restricted Area\n","*"*100)
+                            for box_id in range(len(person_boxes)):
                                 #log
                                 if db_access:
-                                    logging(engine, frame, violation_tracker[index]["start_time"], label_id=3, \
+                                    logging(engine, frame, violation_tracker[index]["PD"]["start_time"], label_id=1, \
                                     inference_engine_id=inference_engine_id, operating_unit_id=operating_unit_ids[index], event_flag=1, index=box_id,\
-                                    object_xmin=boxes[box_id][0], object_ymin=boxes[box_id][1], object_xmax=boxes[box_id][2], object_ymax=boxes[box_id][3], label_object_pred_threshold=min_score_thresh)
+                                    object_xmin=person_boxes[box_id][0], object_ymin=person_boxes[box_id][1], object_xmax=person_boxes[box_id][2], object_ymax=person_boxes[box_id][3], label_object_pred_threshold=min_score_thresh)
                                 
-                        elif violation_tracker[index]["violation"] and len(boxes) == 0 and violation_tracker[index]["end_time"] == None:
-                            violation_tracker[index]["end_time"] = current_time
-                            violation_tracker[index]["violation"] = False
+                        elif violation_tracker[index]["PD"]["violation"] and len(person_boxes) == 0 and violation_tracker[index]["PD"]["end_time"] == None:
+                            violation_tracker[index]["PD"]["end_time"] = current_time
+                            violation_tracker[index]["PD"]["violation"] = False
                         
-                        elif len(boxes) == 0 and not violation_tracker[index]["violation"] and violation_tracker[index]["end_time"] != None and current_time - violation_tracker[index]["end_time"] > timedelta(seconds=10):
-                            violation_tracker[index]["start_time"] =  None
-                            violation_tracker[index]["end_time"] = None
+                        elif len(person_boxes) == 0 and not violation_tracker[index]["PD"]["violation"] and violation_tracker[index]["PD"]["end_time"] != None and current_time - violation_tracker[index]["PD"]["end_time"] > timedelta(seconds=10):
+                            violation_tracker[index]["PD"]["start_time"] =  None
+                            violation_tracker[index]["PD"]["end_time"] = None
                             if db_access:
-                                logging(engine, frame, violation_tracker[index]["start_time"], label_id=3, \
+                                logging(engine, frame, violation_tracker[index]["PD"]["end_time"], label_id=1, \
                                 inference_engine_id=inference_engine_id, operating_unit_id=operating_unit_ids[index], label_object_pred_threshold=min_score_thresh)
 
-                    if 2 in labels_list[index]:
-                        person_boxes = detection_boxes[np.where(detection_classes == 3)]
-                        vest_boxes = detection_boxes[np.where(detection_classes == 2)]
+                        if 3 in labels_list[index]:
+                          
+                            vest_boxes = detection_boxes[np.where(detection_classes == 2)]
+                            print("VD")
+                            if len(person_boxes) > 0:
+                                box_mapper = []
+                                for person_box_id in range(len(person_boxes)):
+                                    box_id, flag = check_hardhat(vest_boxes, person_boxes[person_box_id])
+                                    person_box_index = person_boxes[person_box_id]
+                                    box_mapper.append({'box_index': box_id, 'person_box_index':person_box_index})
+                                    persons.append(flag)
+                            
+                                if not violation_tracker[index]["SV"]["violation"] and (not all(persons) or len(vest_boxes)<len(person_boxes)):
+                                    violation_tracker[index]["SV"]["violation"] = True
+                                    violation_tracker[index]["SV"]["start_time"] =  current_time
+                                    violation_tracker[index]["SV"]["end_time"] = current_time
+                                    print ("*"*100,"\nViolation Detected : Person Not Wearing Vest\n","*"*100)
 
-                        if len(person_boxes) > 0:
-                            box_mapper = []
-                            for person_box_id in range(len(person_boxes)):
-                                box_id, flag = check_hardhat(vest_boxes, person_boxes[person_box_id])
-                                person_box_index = person_boxes[person_box_id]
-                                box_mapper.append({'box_index': box_id, 'person_box_index':person_box_index})
-                                persons.append(flag)
-                        
-                            if not violation_tracker[index]["violation"] and not all(persons):
-                                violation_tracker[index]["violation"] = True
-                                violation_tracker[index]["start_time"] =  current_time
-                                violation_tracker[index]["end_time"] = current_time
-                                
-                                for box_id in range(len(box_mapper)):
-                                    if not persons[box_id]:
-                                        box = person_boxes[box_id]
-                                        if db_access:
-                                            logging(engine, frame, violation_tracker[index]["start_time"], label_id=2, \
-                                            inference_engine_id=inference_engine_id, operating_unit_id=operating_unit_ids[index], event_flag=1, index=box_id,\
-                                            object_xmin=box[0], object_ymin=box[1], object_xmax=box[2], object_ymax=box[3], label_object_pred_threshold=min_score_thresh)
-                                
-                        elif violation_tracker[index]["violation"] and all(persons) and violation_tracker[index]["end_time"] == None:
-                            violation_tracker[index]["end_time"] = current_time
-                            violation_tracker[index]["violation"] = False
-                        
-                        elif not violation_tracker[index]["violation"] and violation_tracker[index]["end_time"] != None and current_time - violation_tracker[index]["end_time"] > timedelta(seconds=10):
-                            violation_tracker[index]["start_time"] =  None
-                            violation_tracker[index]["end_time"] = None
-                            if db_access:
-                                logging(engine, frame, violation_tracker[index]["start_time"],  label_id=2, \
-                                inference_engine_id=inference_engine_id, operating_unit_id=operating_unit_ids[index], label_object_pred_threshold=min_score_thresh)
+                                    for box_id in range(len(vest_boxes)):
+                                        if not persons[box_id]:
+                                            box = person_boxes[box_id]
+                                            if db_access:
+                                                logging(engine, frame, violation_tracker[index]["SV"]["start_time"], label_id=3, \
+                                                inference_engine_id=inference_engine_id, operating_unit_id=operating_unit_ids[index], event_flag=1, index=box_id,\
+                                                object_xmin=box[0], object_ymin=box[1], object_xmax=box[2], object_ymax=box[3], label_object_pred_threshold=min_score_thresh)
+                                    
+                            elif violation_tracker[index]["SV"]["violation"] and (all(persons) or len(vest_boxes)==len(person_boxes)) and violation_tracker[index]["SV"]["end_time"] == None:
+                                violation_tracker[index]["SV"]["end_time"] = current_time
+                                violation_tracker[index]["SV"]["violation"] = False
+                            
+                            elif not violation_tracker[index]["SV"]["violation"] and violation_tracker[index]["SV"]["end_time"] != None and current_time - violation_tracker[index]["SV"]["end_time"] > timedelta(seconds=10):
+                                violation_tracker[index]["SV"]["start_time"] =  None
+                                violation_tracker[index]["SV"]["end_time"] = None
+                                if db_access:
+                                    logging(engine, frame, violation_tracker[index]["SV"]["end_time"],  label_id=3, \
+                                    inference_engine_id=inference_engine_id, operating_unit_id=operating_unit_ids[index], label_object_pred_threshold=min_score_thresh)
                     
 
-                    if 1 in labels_list[index]:
-                        person_boxes = detection_boxes[np.where(detection_classes == 3)]
-                        hat_boxes = detection_boxes[np.where(detection_classes == 1)]
-                        
-                        box_mapper = []
-                        
-                        for person_box_id in range(len(person_boxes)):
-                                box_id, flag = check_hardhat(hat_boxes, person_boxes[person_box_id])
-                                person_box_index = person_boxes[person_box_id]
-                                box_mapper.append({'box_index': box_id, 'person_box_index':person_box_index})
-                                persons.append(flag)
-                                
-                        
-                        if len(person_boxes) > 0:
-                            if not violation_tracker[index]["violation"] and not all(persons):
-                                violation_tracker[index]["violation"] = True
-                                violation_tracker[index]["start_time"] =  current_time
-                                violation_tracker[index]["end_time"] = current_time
-                                print("Viloation detected")
+                        if 2 in labels_list[index]:
+                            hat_boxes = detection_boxes[np.where(detection_classes == 1)]
+                            print("HH")
+                            box_mapper = []
+                            
+                            for person_box_id in range(len(person_boxes)):
+                                    box_id, flag = check_hardhat(hat_boxes, person_boxes[person_box_id])
+                                    person_box_index = person_boxes[person_box_id]
+                                    box_mapper.append({'box_index': box_id, 'person_box_index':person_box_index})
+                                    persons.append(flag)
+                            
+                            if not violation_tracker[index]["HH"]["violation"] and (not all(persons) or len(hat_boxes)<len(person_boxes)):
+                                violation_tracker[index]["HH"]["violation"] = True
+                                violation_tracker[index]["HH"]["start_time"] =  current_time
+                                violation_tracker[index]["HH"]["end_time"] = current_time
+                                print ("*"*100,"\nViolation Detected : Person not wearing hard hat\n","*"*100)
+
                                 for box_id in range(len(box_mapper)):
                                     if not persons[box_id]:
                                         box = person_boxes[box_id]
                                         if db_access:
-                                            logging(engine, frame, violation_tracker[index]["start_time"], label_id=1, \
+                                            logging(engine, frame, violation_tracker[index]["HH"]["start_time"], label_id=2, \
                                             inference_engine_id=inference_engine_id, operating_unit_id=operating_unit_ids[index], event_flag=1, index=box_id,\
                                             object_xmin=box[0], object_ymin=box[1], object_xmax=box[2], object_ymax=box[3], label_object_pred_threshold=min_score_thresh)
 
-                        elif violation_tracker[index]["violation"] and all(persons) and violation_tracker[index]["end_time"] == None:
-                            violation_tracker[index]["end_time"] = current_time
-                            violation_tracker[index]["violation"] = False
-                        
-                        elif len(person_boxes) == 0 and not violation_tracker[index]["violation"] and violation_tracker[index]["end_time"] != None and current_time - violation_tracker[index]["end_time"] > timedelta(seconds=10):
-                            violation_tracker[index]["start_time"] =  None
-                            violation_tracker[index]["end_time"] = None
-                            if db_access:
-                                logging(engine, frame, violation_tracker[index]["start_time"],  label_id=1, \
-                                inference_engine_id=inference_engine_id, operating_unit_id=operating_unit_ids[index], label_object_pred_threshold=min_score_thresh)
+                            elif violation_tracker[index]["HH"]["violation"] and (all(persons) or len(hat_boxes)==len(person_boxes)) and violation_tracker[index]["HH"]["end_time"] == None:
+                                violation_tracker[index]["HH"]["end_time"] = current_time
+                                violation_tracker[index]["HH"]["violation"] = False
+                            
+                            elif len(person_boxes) == 0 and not violation_tracker[index]["HH"]["violation"] and violation_tracker[index]["HH"]["end_time"] != None and current_time - violation_tracker[index]["HH"]["end_time"] > timedelta(seconds=10):
+                                violation_tracker[index]["HH"]["start_time"] =  None
+                                violation_tracker[index]["HH"]["end_time"] = None
+                                if db_access:
+                                    logging(engine, frame, violation_tracker[index]["HH"]["end_time"],  label_id=3, \
+                                    inference_engine_id=inference_engine_id, operating_unit_id=operating_unit_ids[index], label_object_pred_threshold=min_score_thresh)
 
+                    print(violation_tracker)
                     # elif label_to_predict == "All":
                     #     person_boxes = detection_boxes[np.where(detection_classes == 3)]
                     #     vest_boxes = detection_boxes[np.where(detection_classes == 2)]
@@ -385,10 +403,11 @@ def predict(graph, labels_list, inference_engine_id=1, streams=None, engine=None
                     #         print("violation ended")
                     #         logging(engine, frame, violation_tracker[index]["start_time"], label_id, \
                     #                 inference_engine_id=inference_engine_id, operating_unit_id=operating_unit_ids[index], label_object_pred_threshold=min_score_thresh)
-                            
+                
 
         print("predict:", "releasing video capture")
         cap.release()
+        cv2.destroyAllWindows()
 
 
 def main():
@@ -404,9 +423,7 @@ def main():
         exit(-1)
     print("loading model")
     graph = load_model(frozen_model_path)
-    category_index = {1: {'id': 1 , 'name': 'Hard Hat'},
-                      2: {'id': 2, 'name': 'Saftey Vest'},
-                      3: {'id': 3, 'name': 'Person'}}
+    
     
     predict(graph, [[1, 2, 3]], streams={0:args.video_file_name})
     
