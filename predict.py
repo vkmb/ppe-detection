@@ -344,7 +344,7 @@ def predict(
                             )
 
                             for box_id in range(len(person_boxes)):
-                                cv2.imwrite(f"ppe{count}_pd_error.jpg", frame)
+                                # cv2.imwrite(f"ppe{count}_pd_error.jpg", frame)
                                 event_flag = 1
                                 box = person_boxes[box_id]
                                 if db_access:
@@ -433,7 +433,7 @@ def predict(
                                         daemon=True,
                                         name=f"HH logger {count}",
                                     ).start()
-                                cv2.imwrite(f"ppe{count}_pd_no_error.jpg", frame)
+                                # cv2.imwrite(f"ppe{count}_pd_no_error.jpg", frame)
                                 print(
                                     "*" * 100,
                                     f'\nAfter { {current_time-violation_trackers[index]["PD"]["end_time"]}} seconds Violation ended : Person not wearing hard hat \n',
@@ -471,7 +471,7 @@ def predict(
                                 "\nViolation Detected : Person not wearing hard hat\n",
                                 "*" * 100,
                             )
-                            for box_map in box_mapper:
+                            for box_map_id, box_map in enumerate(box_mapper):
                                 event_flag = 1
                                 if db_access:
                                     if box_map["box_index"] == True:
@@ -479,7 +479,7 @@ def predict(
                                             f"ppe{count}_hh_no_error.jpg", frame
                                         )
                                         event_flag = 0
-                                        box = hat_boxes[box_mapper.index(box_map)]
+                                        box = hat_boxes[box_map_id]
                                         Thread(
                                             target=logging,
                                             args=(
@@ -518,8 +518,8 @@ def predict(
                                             name=f"HH logger {count}_hh_no_error",
                                         ).start()
 
-                                    else:
-                                        cv2.imwrite(f"ppe{count}_hh_error.jpg", frame)
+                                    # else:
+                                    # cv2.imwrite(f"ppe{count}_hh_error.jpg", frame)
 
                                     box = box_map["person_box"]
                                     Thread(
@@ -612,7 +612,7 @@ def predict(
                                     f'\nAfter { {current_time-violation_trackers[index]["HH"]["end_time"]}} seconds Violation ended : Person not wearing hard hat \n',
                                     "*" * 100,
                                 )
-                                cv2.imwrite(f"ppe{count}_hh_no_error.jpg", frame)
+                                # cv2.imwrite(f"ppe{count}_hh_no_error.jpg", frame)
                                 violation_trackers[index]["HH"]["start_time"] = None
                                 violation_trackers[index]["HH"]["end_time"] = None
 
@@ -658,7 +658,7 @@ def predict(
                                         name=f"HH logger {count}",
                                     ).start()
 
-                                cv2.imwrite(f"ppe{count}_hh_no_error.jpg", frame)
+                                # cv2.imwrite(f"ppe{count}_hh_no_error.jpg", frame)
                                 print(
                                     "*" * 100,
                                     f'\nAfter { {current_time-violation_trackers[index]["HH"]["end_time"]}} seconds Violation ended : Person not wearing hard hat \n',
@@ -707,15 +707,15 @@ def predict(
                                 "\nViolation Detected : Person not wearing saftey vest\n",
                                 "*" * 100,
                             )
-                            for box_map in box_mapper:
+                            for box_map_id, box_map in enumerate(box_mapper):
                                 event_flag = 1
                                 if db_access:
                                     if box_map["box_index"] == True:
-                                        cv2.imwrite(
-                                            f"ppe{count}_sv_no_error.jpg", frame
-                                        )
+                                        # cv2.imwrite(
+                                        #     f"ppe{count}_sv_no_error.jpg", frame
+                                        # )
                                         event_flag = 0
-                                        box = vest_boxes[box_mapper.index(box_map)]
+                                        box = vest_boxes[box_map_id]
                                         Thread(
                                             target=logging,
                                             args=(
@@ -753,8 +753,8 @@ def predict(
                                             daemon=True,
                                             name=f"sv logger {count}",
                                         ).start()
-                                    else:
-                                        cv2.imwrite(f"ppe{count}_sv_error.jpg", frame)
+                                    # else:
+                                    # cv2.imwrite(f"ppe{count}_sv_error.jpg", frame)
                                     box = box_map["person_box"]
                                     Thread(
                                         target=logging,
@@ -810,7 +810,7 @@ def predict(
                                 "end_time"
                             ] > timedelta(seconds=interval_time):
                                 violation_trackers[index]["SV"]["violation"] = False
-                                cv2.imwrite(f"ppe{count}_sv_no_error.jpg", frame)
+                                # cv2.imwrite(f"ppe{count}_sv_no_error.jpg", frame)
                                 if db_access:
                                     Thread(
                                         target=logging,
@@ -846,7 +846,7 @@ def predict(
                                     f'\nAfter { {current_time-violation_trackers[index]["SV"]["end_time"]}} seconds Violation ended : Person not wearing hard hat \n',
                                     "*" * 100,
                                 )
-                                cv2.imwrite(f"ppe{count}_sv_no_error.jpg", frame)
+                                # cv2.imwrite(f"ppe{count}_sv_no_error.jpg", frame)
                                 violation_trackers[index]["SV"]["start_time"] = None
                                 violation_trackers[index]["SV"]["end_time"] = None
 
@@ -861,7 +861,7 @@ def predict(
                                 "end_time"
                             ] > timedelta(seconds=interval_time):
                                 violation_trackers[index]["SV"]["violation"] = False
-                                cv2.imwrite(f"ppe{count}_sv_no_error.jpg", frame)
+                                # cv2.imwrite(f"ppe{count}_sv_no_error.jpg", frame)
                                 if db_access:
                                     Thread(
                                         target=logging,
