@@ -190,6 +190,7 @@ def predict(
     interval_time=1,
     streams=None,
     engine=None,
+    skip_frame_count=20
 ):
     global violation_trackers, db_access
     caps = []
@@ -291,6 +292,13 @@ def predict(
                     if frame is None or ret == False:
                         print("predict:", "null frame")
                         Flags[index] = False
+                        continue
+
+                    if skip_frame_count == 0:
+                        pass
+                    elif count % skip_frame_count == 0:
+                        pass
+                    else:
                         continue
 
                     image_expanded = np.expand_dims(frame, axis=0)
@@ -474,10 +482,8 @@ def predict(
                             for box_map_id, box_map in enumerate(box_mapper):
                                 event_flag = 1
                                 if db_access:
-                                    if box_map["box_index"] == True:
-                                        cv2.imwrite(
-                                            f"ppe{count}_hh_no_error.jpg", frame
-                                        )
+                                    if box_map["box_index"] == True and box_map_id < len(hat_boxes):
+                                        print(box_map, len(hat_boxes))
                                         event_flag = 0
                                         box = hat_boxes[box_map_id]
                                         Thread(
@@ -710,7 +716,8 @@ def predict(
                             for box_map_id, box_map in enumerate(box_mapper):
                                 event_flag = 1
                                 if db_access:
-                                    if box_map["box_index"] == True:
+                                    if box_map["box_index"] == True and box_map_id < len(vest_boxes):
+
                                         # cv2.imwrite(
                                         #     f"ppe{count}_sv_no_error.jpg", frame
                                         # )
@@ -927,6 +934,14 @@ def main():
         help="path to video file, or camera device, i.e /dev/video1 or just 0, 1, ...",
     )
     parser.add_argument(
+        "--skip_frame_count",
+        type=int,
+        default=20,
+        required=False,
+        help="number of frames to be skipped for each stream read",
+    )
+
+    parser.add_argument(
         "--interval_time", type=int, required=True, help="Interval of update to db"
     )
     # parser.add_argument("--model_dir", type=str, required=True, help="path to model directory")
@@ -945,6 +960,7 @@ def main():
         [[1, 2, 3]],
         interval_time=args.interval_time,
         streams={1: args.video_file_name},
+        skip_frame_count=args.skip_frame_count
     )
 
 
