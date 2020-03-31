@@ -12,7 +12,7 @@ detection_api = os.getenv("PPE_DETECTION_URL", "http://localhost:8080/v1/detecti
 message_send_interval = int(os.getenv("PPE_MESSAGE_SEND_INTERVAL", 1000))
 
 # Object confidence threshold, if the object confidence smaller than threshold, it will be filtered out
-object_confidence_threshold = float(os.getenv("PPE_OBJECT_CONFIDENCE_THRESHOLD", .5))
+object_confidence_threshold = float(os.getenv("PPE_OBJECT_CONFIDENCE_THRESHOLD", 0.5))
 
 # Capture Image Size, Allowed Resolution:(640, 480), (1280, 720), (1920, 1080)
 supported_video_resolution = [(640, 480), (1280, 720), (1920, 1080)]
@@ -30,5 +30,3 @@ storage_image_height = int(os.getenv("PPE_STORAGE_IMAGE_HEIGHT", 360))
 
 # Input Type, ["camera", "file"]
 input_type = os.getenv("PPE_INPUT_TYPE", "file")
-
-

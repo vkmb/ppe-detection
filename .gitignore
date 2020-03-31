@@ -4,3 +4,6 @@ __pycache__/
 *.mov
 *.
 *.m4v
+*.xlsx
+test.mp4
+test.py
