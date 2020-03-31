@@ -451,7 +451,7 @@ def predict(
                         )
                         box_mapper = []
                         for person_box_id in range(len(person_boxes)):
-                            box_id, flag = check_vest(
+                            box_id, flag = check_hardhat(
                                 hat_boxes, person_boxes[person_box_id]
                             )
                             person_box = person_boxes[person_box_id]
