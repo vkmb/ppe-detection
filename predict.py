@@ -236,12 +236,6 @@ def predict(
         else:
             print(" * Some streams are inaccessible")
 
-    # populate the locals
-    # model metadata
-    # inference_engine_dict = inference_engine_loader(engine, inference_engine_id)
-    # load operating unit metadata
-    # operating_unit_dict = operating_unit_loader(engine, operating_unit_id)
-    # label_to_predict = label_dict["label_name"]
     for label_list in labels_list:
         st = ""
         if 1 in label_list:
@@ -300,7 +294,7 @@ def predict(
                         pass
                     else:
                         continue
-
+                                        
                     image_expanded = np.expand_dims(frame, axis=0)
                     output_dict = run_inference_for_single_image(
                         image_expanded, sess, tensor_dict
@@ -327,6 +321,8 @@ def predict(
                         use_normalized_coordinates=True,
                         line_thickness=2,
                     )
+                    # cv2.imwrite(f"ppe{count}.jpg", frame)
+                    
                     persons_wearing_hats = []
                     persons_wearing_vests = []
 
@@ -936,7 +932,7 @@ def main():
     parser.add_argument(
         "--skip_frame_count",
         type=int,
-        default=20,
+        default=0,
         required=False,
         help="number of frames to be skipped for each stream read",
     )
