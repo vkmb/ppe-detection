@@ -1,8 +1,5 @@
 import os
 import cv2
-import queue
-import config
-import base64
 import argparse
 import numpy as np
 import tensorflow as tf
@@ -190,7 +187,8 @@ def predict(
     interval_time=1,
     streams=None,
     engine=None,
-    skip_frame_count=20
+    skip_frame_count=20,
+    connect_to_db=True
 ):
     global violation_trackers, db_access
     caps = []
@@ -201,20 +199,20 @@ def predict(
         2: {"id": 2, "name": "Saftey Vest"},
         3: {"id": 3, "name": "Person"},
     }
-
-    try:
-        if engine == None:
-            engine = generate_db_engine(creds)
-        engine.connect()
-        db_access = True
-    except:
-        usr_prompt = input(
-            ' * Access to db failed !_! \n    - If you wish to continue type "y" : '
-        )
-        if usr_prompt != "y":
-            exit()
-        db_access = False
-
+    if connect_to_db:
+        try:
+            if engine == None:
+                engine = generate_db_engine(creds)
+            engine.connect()
+            db_access = True
+        except:
+            usr_prompt = input(
+                ' * Access to db failed !_! \n    - If you wish to continue type "y" : '
+            )
+            if usr_prompt != "y":
+                exit()
+            db_access = False
+    
     if streams == None:
         print(
             " * No streams to capture photons are found !_! \n    - Being pulled into blackhole"
@@ -938,6 +936,15 @@ def main():
     )
 
     parser.add_argument(
+        "--connect_to_db",
+        type=int,
+        default=1,
+        required=False,
+        help="number of frames to be skipped for each stream read",
+    )
+
+
+    parser.add_argument(
         "--interval_time", type=int, required=True, help="Interval of update to db"
     )
     # parser.add_argument("--model_dir", type=str, required=True, help="path to model directory")
@@ -956,7 +963,8 @@ def main():
         [[1, 2, 3]],
         interval_time=args.interval_time,
         streams={1: args.video_file_name},
-        skip_frame_count=args.skip_frame_count
+        skip_frame_count=args.skip_frame_count,
+        connect_to_db = args.connect_to_db
     )
 
 

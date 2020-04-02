@@ -20,15 +20,15 @@ worksheet = workbook.add_worksheet()
 headers = [
     "Violation Type",
     "Image",
-    "image_file_path",
     "timestamp",
     "object_dtl_seq",
     "frame_seq",
     "event_log_seq",
+    "image_file_path"
 ]
-row = 1
+row = 0
 worksheet.set_column("A:G", 100)
-worksheet.set_column("B:B", 400)
+worksheet.set_column("B:B", 200)
 for datum in headers:
     worksheet.write(row, headers.index(datum), datum)
 
@@ -37,14 +37,14 @@ def test_log(data):
     # data - list [type of violation, image_file_path, image_file_path, timestamp, object_dtl_seq, frame_seq, event_log_seq]
     global row
     row += 1
-    worksheet.set_row(row, 400)
+    worksheet.set_row(row, 200)
     for datum in data:
         if data.index(datum) == 1:
             worksheet.insert_image(
                 row,
                 data.index(datum),
                 datum,
-                {"x_scale": 0.5, "y_scale": 0.5, "x_offset": 15, "y_offset": 10},
+                {"x_scale": 0.5, "y_scale": 0.5, "x_offset": 15, "y_offset": 15},
             )
             continue
         worksheet.write(row, data.index(datum), datum)
